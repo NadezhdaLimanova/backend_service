@@ -1,13 +1,13 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from django.contrib.auth.validators import UnicodeUsernameValidator
 
+types_of_users = (('shop', 'Магазин'), ('buyer', 'Покупатель'))
 
 class UserManager(BaseUserManager):
     use_in_migrations = True
 
     def _create_user(self, email, password, **extra_fields):
-        if not email:
-            raise ValueError('Не указан email')
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
@@ -32,21 +32,28 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractUser):
-    email = models.EmailField(unique=True)
-    username = models.CharField(max_length=150, unique=True, error_messages={
-        'unique': 'user already exists',
-    })
-    is_active = models.BooleanField(default=True)
-    is_staff = models.BooleanField(default=False)
-    is_superuser = models.BooleanField(default=False)
-    date_joined = models.DateTimeField(auto_now_add=True)
 
     objects = UserManager()
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
+    REQUIRED_FIELDS = []
+
+    email = models.EmailField(unique=True)
+    username_validator = UnicodeUsernameValidator()
+    username = models.CharField(max_length=150, error_messages={
+        'unique': 'user already exists',
+    })
+    is_active = models.BooleanField(default=False)
+    date_joined = models.DateTimeField(auto_now_add=True)
+    type_of_user = models.CharField(verbose_name='Тип пользователя', choices=types_of_users, max_length=5, default='buyer')
+
+    def __str__(self):
+        return f'{self.first_name} {self.last_name}'
+
+    class Meta:
+        verbose_name = 'Пользователь'
+        verbose_name_plural = "Список пользователей"
+        ordering = ('email',)
 
 
-from django.db import models
 
-# Create your models here.
