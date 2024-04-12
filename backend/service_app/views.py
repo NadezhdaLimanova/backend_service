@@ -38,7 +38,7 @@ class ConfirmEmail(APIView):
         email = request.data.get('email')
         token = request.data.get('token')
         if email and token:
-            token_object = ConfirmEmailUser.objects.filter(user__email=email,
+            token_object = ConfirmEmailUser.object.filter(user__email=email,
                                                             key_token=token).first()
             if token_object:
                 token_object.user.is_active = True

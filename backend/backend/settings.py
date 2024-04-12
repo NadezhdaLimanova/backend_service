@@ -125,11 +125,12 @@ AUTH_USER_MODEL = 'service_app.User'
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
-EMAIL_HOST = 'smtp.example.com'
-EMAIL_PORT = '587'
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'dindinka86@gmail.com'
-EMAIL_HOST_PASSWORD = 'my31bon05nie2013'
+EMAIL_HOST = 'smtp.mail.ru'
+
+EMAIL_HOST_USER = 'netology.diplom@mail.ru'
+EMAIL_HOST_PASSWORD = 'CLdm7yW4U9nivz9mbexu'
+EMAIL_PORT = '465'
+EMAIL_USE_SSL = True
 SERVER_EMAIL = EMAIL_HOST_USER
 
 # Default primary key field type

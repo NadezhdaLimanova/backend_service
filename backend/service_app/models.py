@@ -85,5 +85,3 @@ class ConfirmEmailUser(models.Model):
 
 
 
-
-
