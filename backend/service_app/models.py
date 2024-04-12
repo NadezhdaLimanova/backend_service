@@ -1,8 +1,10 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.contrib.auth.validators import UnicodeUsernameValidator
+from django_rest_passwordreset.tokens import get_token_generator
 
 types_of_users = (('shop', 'Магазин'), ('buyer', 'Покупатель'))
+
 
 class UserManager(BaseUserManager):
     use_in_migrations = True
@@ -54,6 +56,34 @@ class User(AbstractUser):
         verbose_name = 'Пользователь'
         verbose_name_plural = "Список пользователей"
         ordering = ('email',)
+
+
+class ConfirmEmailUser(models.Model):
+    object = models.manager.Manager()
+    class Meta:
+        verbose_name = 'Подтверждение почты пользователя'
+        verbose_name_plural = "Список подтверждений почты пользователя"
+
+    @staticmethod
+    # генерация токена сброса пароля из библиотеки django_rest_passwordreset
+    def generate_key_token():
+        return get_token_generator().generate_token()
+
+    user = models.ForeignKey(User, related_name='confirm_user', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    key_token = models.CharField(max_length=80, unique=True, default=None)
+
+    def save(self, *args, **kwargs):
+        if not self.key_token:
+            self.key_token = self.generate_key_token()
+        super(ConfirmEmailUser, self).save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.user}'
+
+
+
+
 
 
 
