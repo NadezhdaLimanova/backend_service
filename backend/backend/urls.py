@@ -21,16 +21,3 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include('service_app.urls', namespace='service_app'))
 ]
-
-# from service_app.views import RegisterUser
-# from django.contrib import admin
-# from rest_framework.routers import DefaultRouter
-# from django.urls import path, include
-#
-# router = DefaultRouter()
-# router.register(r'users', RegisterUser)
-#
-# urlpatterns = [
-#     path('admin/', admin.site.urls),
-#     path('', include(router.urls))
-# ]

@@ -18,3 +18,4 @@ def send_activation_email(sender: Type[User], instance: User, created: bool, **k
         msg = (f'Для подтверждения регистрации перейдите по ссылке: '
                f'http://127.0.0.1:8000/api/v1/user/register/confirm/{token[0].key_token}')
         send_mail('Подтверждение регистрации', msg, from_email, [instance.email], fail_silently=False)
+        print(f'Письмо отправлено на почту {instance.email}')
