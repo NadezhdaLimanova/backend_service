@@ -8,7 +8,6 @@ from rest_framework.request import Request
 from django.contrib.auth import authenticate, login
 
 
-
 class RegisterUser(APIView):
     """
     Регистрация пользователя
@@ -35,8 +34,8 @@ class ConfirmEmail(APIView):
     """
 
     def post(self, request, *args, **kwargs):
-        email = request.data.get('email')
-        token = request.data.get('token')
+        email = request.query_params.get('email')
+        token = request.query_params.get('token')
         if email and token:
             token_object = ConfirmEmailUser.object.filter(user__email=email,
                                                             key_token=token).first()
@@ -44,7 +43,7 @@ class ConfirmEmail(APIView):
                 token_object.user.is_active = True
                 token_object.user.save()
                 token_object.delete()
-                return Response({'Status': True, 'User': email})
+                return Response({'Status': True})
             else:
                 return Response({'Status': False, 'Errors': 'неправильно указан email'})
         else:
@@ -63,10 +62,12 @@ class LoginUser(APIView):
                 if user.check_password(request.data['password']):
                     if user.is_active:
                         login(request, user)
-                        return Response({'Status': True, 'User': user.email})
+                        token = ConfirmEmailUser.object.get_or_create(user_id=user.pk)
+                        return Response({'Status': True, 'User': user.key_token})
                     else:
                         return Response({'Status': False, 'Errors': 'Аккаунт не активирован'})
                 else:
                     return Response({'Status': False, 'Errors': 'Неверный пароль'})
             else:
                 return Response({'Status': False, 'Errors': 'Пользователь не найден'})
+        return Response({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
