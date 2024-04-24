@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import RegisterUser, ConfirmEmail, LoginUser, ModifyUser
+from .views import RegisterUser, ConfirmEmail, LoginUser, ModifyUser, ContactView
 
 app_name = 'service_app'
 
@@ -9,4 +9,9 @@ urlpatterns = [
     path('user/login/', LoginUser.as_view(), name='user_login'),
     path('user/get/', ModifyUser.as_view(), name='user_get'),
     path('user/modify/', ModifyUser.as_view(), name='user_modify'),
+    path('user/contact/', ContactView.as_view(), name='contact'),
     ]
+
+
+
+

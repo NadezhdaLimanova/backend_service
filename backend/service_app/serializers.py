@@ -1,19 +1,25 @@
 from rest_framework import serializers
-from .models import User
+from .models import User, Contact
 from django.contrib.auth.password_validation import validate_password
 
 
+class ContactSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contact
+        fields = ('id', 'city', 'street', 'house', 'structure', 'building', 'apartment', 'phone')
+        read_only_fields = ('id',)
 
 
 class UserSerializer(serializers.ModelSerializer):
+    contacts = ContactSerializer(read_only=True, many=True)
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError('User with this email already exists')
         return value
 
-    def validate_password(self, value): # проверяем пароль на сложность
-        # sad = 'asd'
+    # проверяем пароль на сложность
+    def validate_password(self, value):
         try:
             validate_password(value)
         except Exception as password_error:
@@ -27,6 +33,9 @@ class UserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
 
+        if 'password' not in validated_data:
+            raise serializers.ValidationError('Password is required')
+
         user = User.objects.create_user(
             email=validated_data['email'],
             password=validated_data['password'],
@@ -38,5 +47,6 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'first_name', 'last_name', 'email', 'password')
+        fields = ('id', 'first_name', 'last_name', 'email', 'password', 'contacts')
         read_only_fields = ('id', )
+
