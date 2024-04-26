@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Contact
+from .models import User, Contact, Shop
 from django.contrib.auth.password_validation import validate_password
 
 
@@ -8,6 +8,13 @@ class ContactSerializer(serializers.ModelSerializer):
         model = Contact
         fields = ('id', 'city', 'street', 'house', 'structure', 'building', 'apartment', 'phone')
         read_only_fields = ('id',)
+
+    def validate(self, data):
+        user = self.context['request'].user
+        existing_contact = Contact.objects.filter(user=user, **data).exists()
+        if existing_contact:
+            raise serializers.ValidationError('Contact with the same data already exists')
+        return data
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -50,3 +57,9 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('id', 'first_name', 'last_name', 'email', 'password', 'contacts')
         read_only_fields = ('id', )
 
+
+class ShopSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Shop
+        fields = ('id', 'name', 'url')
+        read_only_fields = ('id',)

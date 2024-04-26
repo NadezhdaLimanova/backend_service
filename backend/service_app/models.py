@@ -3,6 +3,7 @@ from django.db import models
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django_rest_passwordreset.tokens import get_token_generator
 
+
 types_of_users = (('shop', 'Магазин'), ('buyer', 'Покупатель'))
 
 
@@ -103,6 +104,27 @@ class Contact(models.Model):
     def __str__(self):
         return f'{self.user}{self.city}{self.street}'
 
+
+class Shop(models.Model):
+
+    objects = models.manager.Manager()
+
+    name = models.CharField(max_length=50, verbose_name='Название')
+    url = models.URLField(verbose_name='Ссылка на магазин')
+    user = models.ForeignKey(User, verbose_name='Пользователь', related_name='shops', blank=True,
+                             on_delete=models.CASCADE)
+
+    def load_from_yaml(self, data):
+        print(data)
+        for shop_data in data:
+            shop = Shop.objects.create(name=shop_data['shop'], url=shop_data['url'])
+
+    class Meta:
+        verbose_name = 'Магазин'
+        verbose_name_plural = "Список магазинов"
+
+    def __str__(self):
+        return f'{self.name} {self.url}'
 
 
 

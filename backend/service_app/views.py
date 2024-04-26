@@ -3,12 +3,14 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import User, ConfirmEmailUser, Contact
-from .serializers import UserSerializer, ContactSerializer
+from .models import User, ConfirmEmailUser, Contact, Shop
+from .serializers import UserSerializer, ContactSerializer, ShopSerializer
 from django.http import JsonResponse
 from rest_framework.request import Request
 from django.contrib.auth import authenticate, login
 from rest_framework.authtoken.models import Token
+import yaml
+import os
 
 
 class RegisterUser(APIView):
@@ -63,11 +65,12 @@ class LoginUser(APIView):
             if request.user.is_authenticated:
                 return Response({'Status': False, 'Errors': 'Пользователь уже аутентифицирован'})
             user = authenticate(request, username=request.data['email'], password=request.data['password'])
-
+            print(user)
             if user:
                 if user.is_active:
                     token, _ = Token.objects.get_or_create(user=user)
                     login(request, user)
+                    print(token.key)
                     return Response({'Status': True, 'Token': token.key, 'User': user.email})
                 else:
                     return Response({'Status': False, 'Errors': 'Аккаунт не активирован'})
@@ -129,7 +132,7 @@ class ContactView(APIView):
         if request.user.is_authenticated:
             if {'city', 'street', 'phone'}.issubset(request.data):
                 request.data['user'] = request.user.id
-                serializer = ContactSerializer(data=request.data)
+                serializer = ContactSerializer(data=request.data, context={'request': request})
                 if serializer.is_valid():
                     print(request.data)
                     serializer.save(user=request.user)
@@ -141,26 +144,61 @@ class ContactView(APIView):
         else:
             return Response({'Status': False, 'Errors': 'User is not authenticated'})
 
-
     # изменение контакта
     def put(self, request, *args, **kwargs):
-        # contact = Contact.objects.get(id=request.data['id'])
-        contact = Contact.objects.filter(id=request.data['id'],user_id=request.user.id).first()
-        print(contact)
-        if contact:
-            serializer = ContactSerializer(contact, data=request.data)
+        if 'id' not in request.data:
+            return Response({'Status': False, 'Errors': 'Не указан ID контакта'})
+        contact = Contact.objects.filter(id=request.data['id'], user_id=request.user.id).first()
+        if contact is not None:
+            serializer = ContactSerializer(contact, data=request.data, context={'request': request}, partial=True)
             if serializer.is_valid():
                 serializer.save()
                 return Response({'Status': True, 'Contact': serializer.data})
             else:
                 return Response({'Status': False, 'Errors': serializer.errors})
+        else:
+            return Response({'Status': False, 'Errors': 'Контакт не найден'})
 
     # удаление контакта
     def delete(self, request, *args, **kwargs):
-        contact = Contact.objects.filter(id=request.data['id'],user_id=request.user.id).first()
+        contact_id = request.data.get('id')
+        contact = Contact.objects.filter(id=contact_id, user_id=request.user.id).first()
         if contact:
             contact.delete()
             return Response({'Status': True})
         else:
             return Response({'Status': False, 'Errors': 'Контакт не найден'})
+
+
+class ShopView(APIView):
+    """
+    Получение списка магазинов
+    """
+
+    serializer_class = ShopSerializer
+
+    def get(self, request, *args, **kwargs):
+        file_path = os.path.join(os.path.dirname(__file__), 'data/shop1.yaml')
+        with open(file_path, 'r', encoding='utf-8') as file:
+            data = yaml.safe_load(file)
+        if not isinstance(data, list):
+            return Response({'Status': False, 'Errors': 'Данные должны быть представлены в виде списка'})
+        shops = []
+        for shop_data in data:
+            shop_info = shop_data.get('shop', {})
+            name = shop_info.get('name')
+            url = shop_info.get('url')
+            shop = Shop.objects.create(name=name, url=url)
+            shops.append(shop)
+        if shops:
+            Shop.objects.load_from_yaml(data)
+            queryset = Shop.objects.all()
+            serializer = self.serializer_class(queryset, many=True)
+            return Response({'Status': True, 'Shops': serializer.data})
+        else:
+            return Response({'Status': False, 'Errors': 'Файл с данными магазинов не найден'})
+
+
+
+
 
