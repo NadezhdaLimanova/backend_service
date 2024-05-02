@@ -1,10 +1,11 @@
 from django.shortcuts import render
 from rest_framework.authentication import TokenAuthentication
+from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import User, ConfirmEmailUser, Contact, Shop
-from .serializers import UserSerializer, ContactSerializer, ShopSerializer
+from .models import User, ConfirmEmailUser, Contact, Shop, Category, Goods, YamlLoaderMixin
+from .serializers import UserSerializer, ContactSerializer, ShopSerializer, CategorySerializer
 from django.http import JsonResponse
 from rest_framework.request import Request
 from django.contrib.auth import authenticate, login
@@ -177,26 +178,26 @@ class ShopView(APIView):
 
     serializer_class = ShopSerializer
 
-    def get(self, request, *args, **kwargs):
+    def get(self, request):
         file_path = os.path.join(os.path.dirname(__file__), 'data/shop1.yaml')
-        with open(file_path, 'r', encoding='utf-8') as file:
-            data = yaml.safe_load(file)
-        if not isinstance(data, list):
-            return Response({'Status': False, 'Errors': 'Данные должны быть представлены в виде списка'})
-        shops = []
-        for shop_data in data:
-            shop_info = shop_data.get('shop', {})
-            name = shop_info.get('name')
-            url = shop_info.get('url')
-            shop = Shop.objects.create(name=name, url=url)
-            shops.append(shop)
-        if shops:
-            Shop.objects.load_from_yaml(data)
-            queryset = Shop.objects.all()
-            serializer = self.serializer_class(queryset, many=True)
-            return Response({'Status': True, 'Shops': serializer.data})
-        else:
-            return Response({'Status': False, 'Errors': 'Файл с данными магазинов не найден'})
+        queryset = YamlLoaderMixin.load_from_yaml(file_path)
+        serializer = self.serializer_class(queryset, many=True)
+        return Response({'Status': True, 'Shops': serializer.data})
+
+
+
+class CategoryView(APIView):
+    """
+    Получение списка категорий
+    """
+
+    serializer_class = CategorySerializer
+
+    def get(self, request):
+        file_path = os.path.join(os.path.dirname(__file__), 'data/shop1.yaml')
+        queryset = Category.load_from_yaml(file_path)
+        serializer = self.serializer_class(queryset, many=True)
+        return Response({'Status': True, 'Categories': serializer.data})
 
 
 

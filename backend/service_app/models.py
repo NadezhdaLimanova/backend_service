@@ -1,10 +1,21 @@
+import os
+
+import yaml
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django_rest_passwordreset.tokens import get_token_generator
-
+from rest_framework.response import Response
 
 types_of_users = (('shop', 'Магазин'), ('buyer', 'Покупатель'))
+
+status_of_orders = (
+    ('new', 'Новый'),
+    ('in_progress', 'В процессе'),
+    ('confirmed', 'Подтвержден'),
+    ('sent', 'Отправлен'),
+    ('done', 'Завершена'),
+    ('canceled', 'Отменен'))
 
 
 class UserManager(BaseUserManager):
@@ -105,19 +116,62 @@ class Contact(models.Model):
         return f'{self.user}{self.city}{self.street}'
 
 
-class Shop(models.Model):
+class YamlLoaderMixin:
+    @classmethod
+    def load_from_yaml(cls, file_path):
+        import yaml
+        with open(file_path, 'r', encoding='utf-8') as file:
+            data = yaml.safe_load(file)
 
-    objects = models.manager.Manager()
+        instances = []
+        for item in data:
+            instance = cls._create_instance_from_yaml(item)
+            if instance:
+                instances.append(instance)
+        return instances
+
+    @classmethod
+    def _create_instance_from_yaml(cls, item):
+        raise NotImplementedError("Метод _create_instance_from_yaml() должен быть"
+                                  " определен в дочерней модели.")
+
+
+class Shop(YamlLoaderMixin, models.Model):
 
     name = models.CharField(max_length=50, verbose_name='Название')
     url = models.URLField(verbose_name='Ссылка на магазин')
-    user = models.ForeignKey(User, verbose_name='Пользователь', related_name='shops', blank=True,
+    user = models.ForeignKey(User, verbose_name='Пользователь', related_name='shops',
                              on_delete=models.CASCADE)
+    status = models.BooleanField(verbose_name='Статус получения заказа', default=True)
 
-    def load_from_yaml(self, data):
-        print(data)
-        for shop_data in data:
-            shop = Shop.objects.create(name=shop_data['shop'], url=shop_data['url'])
+    @classmethod
+    def _create_instance_from_yaml(cls, item):
+        user_id = item.get('user_id')
+        user = User.objects.get(id=user_id)
+        name = item.get('shop').get('name')
+        url = item.get('shop').get('url')
+        return cls.objects.create(name=name,
+                                  url=url, user_id=user.id)
+
+    # @classmethod
+    # def load_from_yaml(cls, file_path):
+    #     import yaml
+    #     with open(file_path, 'r', encoding='utf-8') as file:
+    #         data = yaml.safe_load(file)
+    #     shops = []
+    #     for shop_data in data:
+    #         user_id = shop_data.get('user_id')
+    #         user = User.objects.get(id=user_id)
+    #         name = shop_data.get('shop').get('name')
+    #         url = shop_data.get('shop').get('url')
+    #         existing_shop = cls.objects.filter(name=name, url=url).first()
+    #         if not existing_shop:
+    #             shop = cls.objects.create(name=name,
+    #                                   url=url, user_id=user.id)
+    #             shops.append(shop)
+    #         else:
+    #             shops.append(existing_shop)
+    #     return shops
 
     class Meta:
         verbose_name = 'Магазин'
@@ -127,4 +181,70 @@ class Shop(models.Model):
         return f'{self.name} {self.url}'
 
 
+class Category(models.Model):
 
+    # objects = models.manager.Manager()
+
+    name = models.CharField(max_length=50, verbose_name='Название')
+    shops = models.ManyToManyField(Shop, verbose_name='Магазины', related_name='categories')
+
+    @classmethod
+    def load_from_yaml(cls, file_path):
+        import yaml
+        with open(file_path, 'r', encoding='utf-8') as file:
+            data = yaml.safe_load(file)
+        categories = []
+        for item in data:
+            if 'categories' in item:
+                categories_data = item['categories']
+                for category_data in categories_data:
+                    category_id = category_data.get('id')
+                    name = category_data.get('name')
+                    existing_category = cls.objects.filter(id=category_id, name=name).first()
+                    if not existing_category:
+                        category = cls.objects.create(id=category_id,
+                                                  name=name)
+                        categories.append(category)
+                    else:
+                        categories.append(existing_category)
+        return categories
+
+    class Meta:
+        verbose_name = 'Категория'
+        verbose_name_plural = "Список категорий"
+
+    def __str__(self):
+        return f'{self.name}'
+
+
+class Goods(models.Model):
+
+    name = models.CharField(max_length=50, verbose_name='Название')
+    category = models.ForeignKey(Category, verbose_name='Категория', related_name='products',
+                                 on_delete=models.CASCADE)
+
+    @classmethod
+    def load_from_yaml(cls, file_path):
+        import yaml
+        with open(file_path, 'r', encoding='utf-8') as file:
+            data = yaml.safe_load(file)
+        goods = []
+        for item in data:
+            if 'goods' in item:
+                goods_data = item['goods']
+                for product in goods_data:
+                    name = product.get('name')
+                    existing_goods = cls.objects.filter(name=name).first()
+                    if not existing_goods:
+                        product = cls.objects.create(name=name)
+                        goods.append(product)
+                    else:
+                        goods.append(existing_goods)
+        return goods
+
+    class Meta:
+        verbose_name = 'Товар'
+        verbose_name_plural = "Список товаров"
+
+    def __str__(self):
+        return f'{self.name}'
