@@ -2,6 +2,12 @@
   shop:
     name: Связной
     url: http://example.com/shop1
+
+- user_id: 2
+  shop:
+    name: MTS
+    url: http://example.com/shop2
+
 - categories:
   - id: 224
     name: Смартфоны
@@ -15,6 +21,7 @@
 - goods:
   - id: 4216292
     category: 224
+    shop: 2
     model: apple/iphone/xs-max
     name: Смартфон Apple iPhone XS Max 512GB (золотистый)
     price: 110000
@@ -26,6 +33,7 @@
       "Встроенная память (Гб)": 512
       "Цвет": золотистый
   - id: 4216313
+    shop: 1
     category: 224
     model: apple/iphone/xr
     name: Смартфон Apple iPhone XR 256GB (красный)
@@ -38,6 +46,7 @@
       "Встроенная память (Гб)": 256
       "Цвет": красный
   - id: 4216226
+    shop: 1
     category: 224
     model: apple/iphone/xr
     name: Смартфон Apple iPhone XR 256GB (черный)
@@ -50,6 +59,7 @@
       "Встроенная память (Гб)": 256
       "Цвет": черный
   - id: 4672670
+    shop: 2
     category: 224
     model: apple/iphone/xr
     name: Смартфон Apple iPhone XR 128GB (синий)
@@ -62,6 +72,7 @@
       "Встроенная память (Гб)": 256
       "Цвет": синий
   - id: 1234567
+    shop: 2
     category: 15
     model: samsung/galaxy-s20
     name: Smartphone Samsung Galaxy S20 128GB (black)
@@ -74,6 +85,7 @@
       "Internal Memory (GB)": 128
       "Color": black
   - id: 1234568
+    shop: 1
     category: 15
     model: samsung/galaxy-note20
     name: Smartphone Samsung Galaxy Note20 256GB (mystic bronze)
@@ -86,6 +98,7 @@
       "Internal Memory (GB)": 256
       "Color": mystic bronze
   - id: 1235464569
+    shop: 2
     category: 1
     model: sandisk/ultra-flair-64gb
     name: USB Flash Drive SanDisk Ultra Flair 64GB (silver)
@@ -96,6 +109,7 @@
       "Capacity (GB)": 64
       "Color": silver
   - id: 1235434570
+    shop: 1
     category: 1
     model: kingston/datatraveler-32gb
     name: USB Flash Drive Kingston DataTraveler 32GB (red)
@@ -106,6 +120,7 @@
       "Capacity (GB)": 32
       "Color": red
   - id: 123544571
+    shop: 1
     category: 224
     model: xiaomi/mi-10t-pro
     name: Smartphone Xiaomi Mi 10T Pro 256GB (cosmic black)
@@ -118,6 +133,7 @@
       "Internal Memory (GB)": 256
       "Color": cosmic black
   - id: 1234572
+    shop: 1
     category: 5
     model: samsung/qled-q90r
     name: Samsung QLED Q90R 65" 4K UHD Smart TV
@@ -129,6 +145,7 @@
       "Resolution (pixels)": 3840x2160
       "Smart TV": true
   - id: 123476573
+    shop: 2
     category: 5
     model: lg/oled-cx
     name: LG OLED CX 55" 4K UHD Smart TV
@@ -140,6 +157,7 @@
       "Resolution (pixels)": 3840x2160
       "Smart TV": true
   - id: 1234453574
+    shop: 1
     category: 5
     model: sony/bravia-x900h
     name: Sony Bravia X900H 75" 4K UHD Smart TV
@@ -151,6 +169,7 @@
       "Resolution (pixels)": 3840x2160
       "Smart TV": true
   - id: 123234575
+    shop: 2
     category: 5
     model: tcl/6-series
     name: TCL 6-Series 55" 4K UHD Smart TV
@@ -162,6 +181,7 @@
       "Resolution (pixels)": 3840x2160
       "Smart TV": true
   - id: 123424576
+    shop: 2
     category: 5
     model: vizio/p-series-quantum
     name: Vizio P-Series Quantum 65" 4K UHD Smart TV
@@ -172,8 +192,5 @@
       "Screen Size (inches)": 65
       "Resolution (pixels)": 3840x2160
       "Smart TV": true
-- user_id: 2
-  shop:
-    name: MTS
-    url: http://example.com/shop2
+
 

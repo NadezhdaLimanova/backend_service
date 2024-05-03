@@ -4,8 +4,10 @@ from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import User, ConfirmEmailUser, Contact, Shop, Category, Goods, YamlLoaderMixin
-from .serializers import UserSerializer, ContactSerializer, ShopSerializer, CategorySerializer
+from .models import User, ConfirmEmailUser, Contact, Shop, Category, Goods, ProductInfo
+from .serializers import (UserSerializer, ContactSerializer,
+                          ShopSerializer, CategorySerializer,
+                          GoodsSerializer, ProductInfoSerializer)
 from django.http import JsonResponse
 from rest_framework.request import Request
 from django.contrib.auth import authenticate, login
@@ -180,7 +182,7 @@ class ShopView(APIView):
 
     def get(self, request):
         file_path = os.path.join(os.path.dirname(__file__), 'data/shop1.yaml')
-        queryset = YamlLoaderMixin.load_from_yaml(file_path)
+        queryset = Shop.load_from_yaml(file_path)
         serializer = self.serializer_class(queryset, many=True)
         return Response({'Status': True, 'Shops': serializer.data})
 
@@ -199,7 +201,31 @@ class CategoryView(APIView):
         serializer = self.serializer_class(queryset, many=True)
         return Response({'Status': True, 'Categories': serializer.data})
 
+class GoodsView(APIView):
+    """
+    Получение списка товаров
+    """
 
+    serializer_class = GoodsSerializer
+
+    def get(self, request):
+        file_path = os.path.join(os.path.dirname(__file__), 'data/shop1.yaml')
+        queryset = Goods.load_from_yaml(file_path)
+        serializer = self.serializer_class(queryset, many=True)
+        return Response({'Status': True, 'Goods': serializer.data})
+
+class ProductInfoView(APIView):
+    """
+    Получение информации о продукте
+    """
+
+    serializer_class = ProductInfoSerializer
+
+    def get(self, request):
+        file_path = os.path.join(os.path.dirname(__file__), 'data/shop1.yaml')
+        queryset = ProductInfo.load_from_yaml(file_path)
+        serializer = self.serializer_class(queryset, many=True)
+        return Response({'Status': True, 'ProductInfo': serializer.data})
 
 
 

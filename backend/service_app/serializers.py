@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Contact, Shop, Category, Goods
+from .models import User, Contact, Shop, Category, Goods, ProductInfo, ProductParameter
 from django.contrib.auth.password_validation import validate_password
 
 
@@ -77,4 +77,20 @@ class GoodsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Goods
-        fields = ('name', 'category')
+        fields = ('id','name', 'category')
+
+
+class ProductParameterSerializer(serializers.ModelSerializer):
+    parameter = serializers.StringRelatedField()
+
+    class Meta:
+        model = ProductParameter
+        fields = ('parameter', 'value')
+
+class ProductInfoSerializer(serializers.ModelSerializer):
+    product = GoodsSerializer(read_only=True)
+    product_parameter = ProductParameterSerializer(read_only=True, many=True)
+    class Meta:
+        model = ProductInfo
+        fields = ('id', 'model', 'product', 'shop', 'quantity', 'price', 'price_rrc')
+        read_only_fields = ('id',)
