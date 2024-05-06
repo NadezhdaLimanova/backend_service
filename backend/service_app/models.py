@@ -10,6 +10,7 @@ from rest_framework.response import Response
 types_of_users = (('shop', 'Магазин'), ('buyer', 'Покупатель'))
 
 status_of_orders = (
+    ('basket', 'Статус корзины'),
     ('new', 'Новый'),
     ('in_progress', 'В процессе'),
     ('confirmed', 'Подтвержден'),
@@ -395,3 +396,54 @@ class ProductParameter(models.Model, YamlLoaderMixin):
 
     def __str__(self):
         return f'{self.product_info} {self.parameter} {self.value}'
+
+
+class Order(models.Model):
+    objects = models.Manager()
+    user = models.ForeignKey(User, verbose_name='Пользователь', related_name='orders', blank=True,
+                             on_delete=models.CASCADE)
+    dt = models.DateTimeField(verbose_name='Дата', auto_now_add=True)
+    status = models.CharField(verbose_name='Статус', max_length=15, choices=status_of_orders, default='new')
+    contact = models.ForeignKey(Contact, verbose_name='Контакты', related_name='orders',
+                                blank=True, null=True, on_delete=models.CASCADE)
+
+
+    class Meta:
+        verbose_name = 'Заказ'
+        verbose_name_plural = "Список заказов"
+        ordering = ('-dt',)
+
+    def __str__(self):
+        return f'{self.user} {self.dt} {self.status}'
+
+
+class OrderItem(models.Model):
+    objects = models.Manager()
+    order = models.ForeignKey(Order, verbose_name='Заказ', related_name='ordered_items',
+                              on_delete=models.CASCADE)
+    product_info = models.ForeignKey(ProductInfo, verbose_name='Информация о продукте',
+                                     related_name='ordered_items', on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(verbose_name='Количество')
+
+
+    # @property
+    # def sum(self):
+    #     return self.ordered_items.aggregate(total=Sum("quantity"))["total"]
+
+    # @property
+    # def subtotal(self):
+    #     return self.quantity * self.product_info.price
+    #
+    # def save(self, *args, **kwargs):
+    #     self.subtotal = self.quantity * self.product_info.price
+    #     super(OrderItem, self).save(*args, **kwargs)
+
+    class Meta:
+        verbose_name = 'Заказанный продукт'
+        verbose_name_plural = "Список заказанных продуктов"
+        constraints = [
+            models.UniqueConstraint(fields=['order_id', 'product_info'], name='unique_order_item'),
+        ]
+
+    def __str__(self):
+        return f'{self.order} {self.product_info} {self.quantity}'

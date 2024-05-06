@@ -1,19 +1,24 @@
+from django.db import IntegrityError
+from django.db.models import Q, Sum, F
 from django.shortcuts import render
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import User, ConfirmEmailUser, Contact, Shop, Category, Goods, ProductInfo
+from .models import (User, ConfirmEmailUser, Contact, Shop, Category, Goods,
+                     ProductInfo, Order, OrderItem)
 from .serializers import (UserSerializer, ContactSerializer,
                           ShopSerializer, CategorySerializer,
-                          GoodsSerializer, ProductInfoSerializer)
+                          GoodsSerializer, ProductInfoSerializer,
+                          OrderItemSerializer, OrderSerializer)
 from django.http import JsonResponse
 from rest_framework.request import Request
 from django.contrib.auth import authenticate, login
 from rest_framework.authtoken.models import Token
 import yaml
 import os
+from ujson import loads as load_json
 
 
 class RegisterUser(APIView):
@@ -216,16 +221,82 @@ class GoodsView(APIView):
 
 class ProductInfoView(APIView):
     """
-    Получение информации о продукте
+    Импорт информации о продукте
     """
-
-    serializer_class = ProductInfoSerializer
 
     def get(self, request):
         file_path = os.path.join(os.path.dirname(__file__), 'data/shop1.yaml')
         queryset = ProductInfo.load_from_yaml(file_path)
         serializer = self.serializer_class(queryset, many=True)
         return Response({'Status': True, 'ProductInfo': serializer.data})
+
+class ProductInfoFiltersView(APIView):
+    """
+    Получение информации о продукте по фильтрам
+    """
+    def get(self, request, *args, **kwargs):
+
+        query = Q(shop__status=True)
+        shop_id = request.query_params.get('shop_id')
+        category_id = request.query_params.get('category_id')
+
+        if shop_id:
+            query = query & Q(shop_id=shop_id)
+        if category_id:
+            query = query & Q(product__category_id=category_id)
+
+        queryset = (ProductInfo.objects.filter(query).select_related('shop', 'product__category').
+                    prefetch_related('product_parameters__parameter').distinct())
+
+        serializer = ProductInfoSerializer(queryset, many=True)
+
+        return Response(serializer.data)
+
+
+class BasketView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+
+        if not request.user.is_authenticated:
+            return Response({'Status': False, 'Error': 'User is not authenticated'})
+        basket = Order.objects.filter(
+            user_id=request.user.id, status='basket').prefetch_related(
+            'ordered_items__product_info__product__category',
+            'ordered_items__product_info__product_parameters__parameter').annotate(
+            total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
+
+        if basket:
+            serializer = OrderSerializer(basket, many=True)
+            return Response({'Status': True, 'Basket': serializer.data})
+
+
+    def post(self, request, *args, **kwargs):
+
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'User is not authenticated'},
+                                status=403)
+        items_string = request.data.get('items')
+        print(items_string)
+        if items_string:
+            basket, _ = Order.objects.get_or_create(user_id=request.user.id, status='basket')
+            objects_created = 0
+            for order_item in items_string:
+                order_item.update({'order': basket.id})
+                serializer = OrderItemSerializer(data=order_item)
+                if serializer.is_valid():
+                    try:
+                        serializer.save()
+                    except IntegrityError as error:
+                        return JsonResponse({'Status': False, 'Errors': str(error)})
+                    else:
+                        objects_created += 1
+                else:
+                    return JsonResponse({'Status': False, 'Errors': serializer.errors})
+                return JsonResponse({'Status': True, 'Создано объектов': objects_created})
+        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
 
 
 

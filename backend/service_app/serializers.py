@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import User, Contact, Shop, Category, Goods, ProductInfo, ProductParameter
+from .models import (User, Contact, Shop, Category, Goods, ProductInfo,
+                     ProductParameter, OrderItem, Order)
 from django.contrib.auth.password_validation import validate_password
 
 
@@ -87,10 +88,48 @@ class ProductParameterSerializer(serializers.ModelSerializer):
         model = ProductParameter
         fields = ('parameter', 'value')
 
+
 class ProductInfoSerializer(serializers.ModelSerializer):
     product = GoodsSerializer(read_only=True)
     product_parameter = ProductParameterSerializer(read_only=True, many=True)
+
     class Meta:
         model = ProductInfo
-        fields = ('id', 'model', 'product', 'shop', 'quantity', 'price', 'price_rrc')
+        fields = ('id', 'model', 'product', 'shop', 'quantity', 'price', 'price_rrc', 'product_parameter')
         read_only_fields = ('id',)
+
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = ('id', 'order', 'product_info', 'quantity')
+        read_only_fields = ('id',)
+        extra_kwargs = {
+            'order': {'write_only': True}
+        }
+
+
+class OrderItemCreateSerializer(OrderItemSerializer):
+    product_info = ProductInfoSerializer(read_only=True)
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    ordered_items = OrderItemCreateSerializer(read_only=True, many=True)
+
+    total_sum = serializers.IntegerField()
+    contact = ContactSerializer(read_only=True)
+
+    class Meta:
+        model = Order
+        fields = ('id', 'user', 'dt', 'status', 'contact', 'ordered_items', 'total_sum')
+        read_only_fields = ('id',)
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+
+        total_sum = 0
+        for item in instance.ordered_items.all():
+            total_sum += item.quantity * item.product_info.price
+
+        representation['total_sum'] = total_sum
+        return representation

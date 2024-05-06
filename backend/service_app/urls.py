@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (RegisterUser, ConfirmEmail, LoginUser,
                     ModifyUser, ContactView, ShopView,
-                    CategoryView, GoodsView, ProductInfoView)
+                    CategoryView, GoodsView, ProductInfoView, ProductInfoFiltersView, BasketView)
 
 app_name = 'service_app'
 
@@ -15,7 +15,9 @@ urlpatterns = [
     path('shop/', ShopView.as_view(), name='shop'),
     path('categories/', CategoryView.as_view(), name='category'),
     path('goods/', GoodsView.as_view(), name='goods'),
-    path('products/', ProductInfoView.as_view(), name='product_info'),
+    path('import_products/', ProductInfoView.as_view(), name='product_info'),
+    path('filter_products/', ProductInfoFiltersView.as_view(), name='product_info_filters'),
+    path('basket/', BasketView.as_view(), name='basket'),
     ]
 
 
