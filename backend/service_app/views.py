@@ -1,7 +1,9 @@
+from django.core.validators import URLValidator
 from django.db import IntegrityError
 from django.db.models import Q, Sum, F
 from django.shortcuts import render
 from rest_framework.authentication import TokenAuthentication
+from rest_framework.exceptions import ValidationError
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -264,7 +266,7 @@ class BasketView(APIView):
         basket = Order.objects.filter(
             user_id=request.user.id, status='basket').prefetch_related(
             'ordered_items__product_info__product__category',
-            'ordered_items__product_info__product_parameters__parameter').annotate(
+            'ordered_items__product_info__product_parameters__parameter').select_related('contact').annotate(
             total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
 
         if basket:
@@ -278,7 +280,6 @@ class BasketView(APIView):
             return JsonResponse({'Status': False, 'Error': 'User is not authenticated'},
                                 status=403)
         items_string = request.data.get('items')
-        print(items_string)
         if items_string:
             basket, _ = Order.objects.get_or_create(user_id=request.user.id, status='basket')
             objects_created = 0
@@ -297,6 +298,105 @@ class BasketView(APIView):
                 return JsonResponse({'Status': True, 'Создано объектов': objects_created})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
+    def put(self, request, *args, **kwargs):
 
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'User is not authenticated'},
+                                status=403)
+        items = request.data.get('items')
+        if items:
+            basket, _ = Order.objects.get_or_create(user_id=request.user.id, status='basket')
+            objects_updated = 0
+            for order_item in items:
+                if isinstance(order_item['id'], int) and isinstance(order_item['quantity'], int):
+                    objects_updated += OrderItem.objects.filter(id=order_item['id'], order_id=basket.id).update(
+                        quantity=order_item['quantity'])
+            basket_info = Order.objects.select_related('contact').get(id=basket.id)
+            return JsonResponse({'Status': True, 'Обновлено объектов': objects_updated, 'basket': basket_info.id})
+        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+    def delete(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'User is not authenticated'},
+                                status=403)
+        items = request.data.get('items')
+        if items:
+            basket, _ = Order.objects.get_or_create(user_id=request.user.id, status='basket')
+            objects_deleted = 0
+            for order_item in items:
+                if isinstance(order_item['id'], int):
+                    objects_deleted += OrderItem.objects.filter(id=order_item['id'], order_id=basket.id).delete()[0]
+            return JsonResponse({'Status': True, 'Удалено объектов': objects_deleted})
+        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+
+class OrderView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'User is not authenticated'},
+                                status=403)
+        orders = Order.objects.filter(user_id=request.user.id).prefetch_related(
+            'ordered_items__product_info__product__category',
+            'ordered_items__product_info__product_parameters__parameter').select_related('contact').annotate(
+            total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
+
+        if orders:
+            serializer = OrderSerializer(orders, many=True)
+            return JsonResponse({'Status': True, 'Orders': serializer.data}, safe=False)
+
+
+    def post(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'User is not authenticated'},
+                                status=403)
+        if {'id', 'contact'}.issubset(request.data):
+            if 'id' in request.data and request.data['id'].isdigit():
+                try:
+                    new_order = Order.objects.get(
+                        id=request.data['id'], user_id=request.user.id)
+                    new_order.contact_id = request.data['contact']
+                    new_order.status = 'new'
+                    new_order.save()
+                except IntegrityError as error:
+                    return JsonResponse({'Status': False, 'Errors': str(error)})
+                return JsonResponse({'Status': True, 'order': new_order.id})
+        else:
+            return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+
+
+# class BuyerUpdate(APIView):
+#
+#     def post(self, request, *args, **kwargs):
+#         if not request.user.is_authenticated:
+#             return JsonResponse({'Status': False, 'Error': 'User is not authenticated'},
+#                                 status=403)
+#         if request.user.type_of_user != 'shop':
+#             return JsonResponse({'Status': False, 'Error': 'Только для магазинов'},
+#                                 status=403)
+#         url = request.data.get('url')
+#         if url:
+#             try:
+#                 user = Shop.objects.get(user_id=request.user.id)
+#             except Shop.DoesNotExist:
+#                 return JsonResponse({'Status': False, 'Error': 'Магазин не существует'})
+#             validate_url = URLValidator()
+#             try:
+#                 validate_url(url)
+#             except ValidationError:
+#                 return JsonResponse({'Status': False, 'Error': 'Некорректная ссылка'})
+#             else:
+#                 stream = requests.get(url).content
+#                 data = load_yaml(stream, Loader=Loader)
+#
+#
+#         if user is not None:
+#             user.is_active = True
+#             user.save()
+#             return JsonResponse({'Status': True})
+#         return JsonResponse({'Status': False, 'Errors': 'Пользователь не найден'})
 
 

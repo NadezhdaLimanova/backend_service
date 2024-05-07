@@ -133,15 +133,6 @@ class YamlLoaderMixin:
         print(instances)
         return instances
 
-        # for item in data:
-        #     instance = cls._create_instance_from_yaml(item)
-        #     if instance:
-        #         instances.append(instance)
-        # return instances
-    # @classmethod
-    # def _create_instance_from_yaml(cls, item):
-    #     raise NotImplementedError("Метод _create_instance_from_yaml() должен быть"
-    #                               " определен в дочерней модели.")
 
 
 class Shop(models.Model, YamlLoaderMixin):
@@ -165,26 +156,6 @@ class Shop(models.Model, YamlLoaderMixin):
                                       url=url, user_id=user.id)
             else:
                 return existing_shop
-
-    # @classmethod
-    # def load_from_yaml(cls, file_path):
-    #     import yaml
-    #     with open(file_path, 'r', encoding='utf-8') as file:
-    #         data = yaml.safe_load(file)
-    #     shops = []
-    #     for shop_data in data:
-    #         user_id = shop_data.get('user_id')
-    #         user = User.objects.get(id=user_id)
-    #         name = shop_data.get('shop').get('name')
-    #         url = shop_data.get('shop').get('url')
-    #         existing_shop = cls.objects.filter(name=name, url=url).first()
-    #         if not existing_shop:
-    #             shop = cls.objects.create(name=name,
-    #                                   url=url, user_id=user.id)
-    #             shops.append(shop)
-    #         else:
-    #             shops.append(existing_shop)
-    #     return shops
 
     class Meta:
         verbose_name = 'Магазин'
@@ -218,26 +189,6 @@ class Category(models.Model, YamlLoaderMixin):
                     instances.append(existing_category)
         return instances
 
-    # @classmethod
-    # def load_from_yaml(cls, file_path):
-    #     import yaml
-    #     with open(file_path, 'r', encoding='utf-8') as file:
-    #         data = yaml.safe_load(file)
-    #     categories = []
-    #     for item in data:
-    #         if 'categories' in item:
-    #             categories_data = item['categories']
-    #             for category_data in categories_data:
-    #                 category_id = category_data.get('id')
-    #                 name = category_data.get('name')
-    #                 existing_category = cls.objects.filter(id=category_id, name=name).first()
-    #                 if not existing_category:
-    #                     category = cls.objects.create(id=category_id,
-    #                                               name=name)
-    #                     categories.append(category)
-    #                 else:
-    #                     categories.append(existing_category)
-    #     return categories
 
     class Meta:
         verbose_name = 'Категория'
@@ -273,24 +224,6 @@ class Goods(models.Model, YamlLoaderMixin):
                     instances.append(existing_goods)
             return instances
 
-    # @classmethod
-    # def load_from_yaml(cls, file_path):
-    #     import yaml
-    #     with open(file_path, 'r', encoding='utf-8') as file:
-    #         data = yaml.safe_load(file)
-    #     goods = []
-    #     for item in data:
-    #         if 'goods' in item:
-    #             goods_data = item['goods']
-    #             for product in goods_data:
-    #                 name = product.get('name')
-    #                 existing_goods = cls.objects.filter(name=name).first()
-    #                 if not existing_goods:
-    #                     product = cls.objects.create(name=name)
-    #                     goods.append(product)
-    #                 else:
-    #                     goods.append(existing_goods)
-    #     return goods
 
     class Meta:
         verbose_name = 'Товар'
@@ -404,8 +337,7 @@ class Order(models.Model):
                              on_delete=models.CASCADE)
     dt = models.DateTimeField(verbose_name='Дата', auto_now_add=True)
     status = models.CharField(verbose_name='Статус', max_length=15, choices=status_of_orders, default='new')
-    contact = models.ForeignKey(Contact, verbose_name='Контакты', related_name='orders',
-                                blank=True, null=True, on_delete=models.CASCADE)
+    contact = models.ForeignKey(Contact, verbose_name='Контакты', blank=True, null=True, on_delete=models.CASCADE)
 
 
     class Meta:
