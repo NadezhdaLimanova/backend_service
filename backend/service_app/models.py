@@ -15,8 +15,7 @@ status_of_orders = (
     ('in_progress', 'В процессе'),
     ('confirmed', 'Подтвержден'),
     ('sent', 'Отправлен'),
-    ('done', 'Завершена'),
-    ('canceled', 'Отменен'))
+    ('done', 'Завершена'),)
 
 
 class UserManager(BaseUserManager):

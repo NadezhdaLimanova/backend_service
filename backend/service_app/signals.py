@@ -5,6 +5,7 @@ from .models import User, ConfirmEmailUser, Order
 from django.core.mail import send_mail
 from django.conf import settings
 from typing import Type
+from django.utils import timezone
 
 new_user_registered = Signal()
 
@@ -22,12 +23,17 @@ def send_activation_email(sender: Type[User], instance: User, created: bool, **k
         print(token[0].key_token)
 
 
-@receiver(post_save, sender=Order)
-def send_new_order_email(sender: Type[Order], instance: Order, created: bool, **kwargs):
-    print('send_new_order_email')
-    if created and not instance.status == 'new':
-        print('send_new_order_email2')
-        from_email = settings.EMAIL_HOST_USER
-        msg = f'Ваш заказ подтвержден. '
-        send_mail('Заказ оформлен', msg, from_email, [instance.user.email], fail_silently=False)
+STATUS_MESSAGES = {
+    'new': 'Ваш заказ сформирован.',
+    'in_progress': 'Ваш заказ в процессе подтверждения.',
+    'sent': 'Ваш заказ отправлен.',
+    'done': 'Ваш заказ доставлен.'
+}
 
+@receiver(post_save, sender=Order)
+def send_new_order_email(sender: Type[Order], instance: Order, **kwargs):
+    if instance.dt.date() == timezone.now().date() and instance.status in STATUS_MESSAGES:
+        from_email = settings.EMAIL_HOST_USER
+        msg = STATUS_MESSAGES[instance.status]
+        subject = f'Заказ {instance.status.capitalize()}'
+        send_mail(subject, msg, from_email, [instance.user.email], fail_silently=False)

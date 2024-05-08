@@ -55,14 +55,14 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'first_name', 'last_name', 'email', 'password', 'contacts')
+        fields = ('id', 'first_name', 'last_name', 'email', 'password', 'contacts', 'type_of_user')
         read_only_fields = ('id', )
 
 
 class ShopSerializer(serializers.ModelSerializer):
     class Meta:
         model = Shop
-        fields = ('id', 'name', 'url')
+        fields = ('id', 'name', 'url', 'status')
         read_only_fields = ('id',)
 
 
