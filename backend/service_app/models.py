@@ -1,11 +1,19 @@
-import os
-
-import yaml
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django_rest_passwordreset.tokens import get_token_generator
-from rest_framework.response import Response
+
+"""
+Ниже представлены следующие модели:
+UserManager - миксин для управления пользователями, User - стандартная модель пользователя,
+ConfirmEmailUser - модель подтверждения почты пользователя, Contact - модель контактов пользователя,
+YamlLoaderMixin - миксин для импорта информации из yaml-файла, Shop - модель магазина, Category - модель категории,
+Goods - модель товара, ProductInfo - модель информации о продукте, Parameter - модель параметра,
+ProductParameter - модель параметра продукта, Order - модель заказа,
+OrderItem - модель позиции заказа
+
+"""
+
 
 types_of_users = (('shop', 'Магазин'), ('buyer', 'Покупатель'))
 
@@ -19,6 +27,10 @@ status_of_orders = (
 
 
 class UserManager(BaseUserManager):
+    """
+    Миксин для управления пользователями
+    """
+
     use_in_migrations = True
 
     def _create_user(self, email, password, **extra_fields):
@@ -46,6 +58,9 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractUser):
+    """
+    Стандартная модель пользователя
+    """
 
     objects = UserManager()
 
@@ -71,6 +86,9 @@ class User(AbstractUser):
 
 
 class ConfirmEmailUser(models.Model):
+    """
+    Модель подтверждения почты пользователя
+    """
     object = models.manager.Manager()
     class Meta:
         verbose_name = 'Подтверждение почты пользователя'
@@ -95,6 +113,9 @@ class ConfirmEmailUser(models.Model):
 
 
 class Contact(models.Model):
+    """
+    Модель контактов пользователя
+    """
 
     objects = models.manager.Manager()
 
@@ -117,6 +138,10 @@ class Contact(models.Model):
 
 
 class YamlLoaderMixin:
+    """
+    Миксин для импорта информации из yaml-файла
+    """
+
     @classmethod
     def load_from_yaml(cls, file_path):
         import yaml
@@ -129,12 +154,14 @@ class YamlLoaderMixin:
                 instances.extend(instance)
             if isinstance(instance, cls):
                 instances.append(instance)
-        print(instances)
         return instances
 
 
 
 class Shop(models.Model, YamlLoaderMixin):
+    """
+    Модель магазина с функцией импорта информации о магазинах из yaml-файла
+    """
 
     name = models.CharField(max_length=50, verbose_name='Название')
     url = models.URLField(verbose_name='Ссылка на магазин')
@@ -165,8 +192,9 @@ class Shop(models.Model, YamlLoaderMixin):
 
 
 class Category(models.Model, YamlLoaderMixin):
-
-    # objects = models.manager.Manager()
+    """
+    Модель категории с функцией импорта информации о категориях из yaml-файла
+    """
 
     name = models.CharField(max_length=50, verbose_name='Название')
     shops = models.ManyToManyField(Shop, verbose_name='Магазины', related_name='categories')
@@ -198,6 +226,9 @@ class Category(models.Model, YamlLoaderMixin):
 
 
 class Goods(models.Model, YamlLoaderMixin):
+    """
+    Модель товара с функцией импорта информации о товарах из yaml-файла
+    """
 
     id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=50, verbose_name='Название')
@@ -233,6 +264,9 @@ class Goods(models.Model, YamlLoaderMixin):
 
 
 class ProductInfo(models.Model, YamlLoaderMixin):
+    """
+    Модель информации о продукте с функцией импорта информации о продуктах из yaml-файла
+    """
     external_id = models.PositiveIntegerField(verbose_name='Внешний ИД')
     model = models.CharField(max_length=100, verbose_name='Модель')
     price = models.PositiveIntegerField(verbose_name='Цена')
@@ -279,6 +313,9 @@ class ProductInfo(models.Model, YamlLoaderMixin):
 
 
 class Parameter(models.Model):
+    """
+    Модель параметра
+    """
     objects = models.Manager()
     name = models.CharField(max_length=50, verbose_name='Название')
 
@@ -291,7 +328,9 @@ class Parameter(models.Model):
 
 
 class ProductParameter(models.Model, YamlLoaderMixin):
-    # objects = models.Manager()
+    """
+    Модель связи продукта и параметра с функцией импорта информации о параметрах из yaml-файла
+    """
     product_info = models.ForeignKey(ProductInfo, verbose_name='Информация о продукте',
                                      related_name='product_parameters', on_delete=models.CASCADE)
     parameter = models.ForeignKey(Parameter, verbose_name='Параметр', related_name='product_parameters',
@@ -331,6 +370,9 @@ class ProductParameter(models.Model, YamlLoaderMixin):
 
 
 class Order(models.Model):
+    """
+    Модель заказа
+    """
     objects = models.Manager()
     user = models.ForeignKey(User, verbose_name='Пользователь', related_name='orders', blank=True,
                              on_delete=models.CASCADE)
@@ -349,6 +391,9 @@ class Order(models.Model):
 
 
 class OrderItem(models.Model):
+    """
+    Модель позиции заказа
+    """
     objects = models.Manager()
     order = models.ForeignKey(Order, verbose_name='Заказ', related_name='ordered_items',
                               on_delete=models.CASCADE)
@@ -356,18 +401,6 @@ class OrderItem(models.Model):
                                      related_name='ordered_items', on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(verbose_name='Количество')
 
-
-    # @property
-    # def sum(self):
-    #     return self.ordered_items.aggregate(total=Sum("quantity"))["total"]
-
-    # @property
-    # def subtotal(self):
-    #     return self.quantity * self.product_info.price
-    #
-    # def save(self, *args, **kwargs):
-    #     self.subtotal = self.quantity * self.product_info.price
-    #     super(OrderItem, self).save(*args, **kwargs)
 
     class Meta:
         verbose_name = 'Заказанный продукт'

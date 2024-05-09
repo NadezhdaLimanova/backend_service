@@ -1,5 +1,4 @@
 from distutils.util import strtobool
-
 from django.core.validators import URLValidator
 from django.db import IntegrityError
 from django.db.models import Q, Sum, F
@@ -15,20 +14,17 @@ from .serializers import (UserSerializer, ContactSerializer,
                           GoodsSerializer, ProductInfoSerializer,
                           OrderItemSerializer, OrderSerializer)
 from django.http import JsonResponse
-from rest_framework.request import Request
 from django.contrib.auth import authenticate, login
 from rest_framework.authtoken.models import Token
 import os
-from ujson import loads as load_json
 from yaml import load as load_yaml, Loader
 from requests import get
-import requests
-from yaml import safe_load
 
 
 class RegisterUser(APIView):
     """
-    Регистрация пользователя
+    Регистрация пользователя.
+    метод post проверяет и сохраняет данные пользователя
     """
 
     def post(self, request, *args, **kwargs):
@@ -48,7 +44,8 @@ class RegisterUser(APIView):
 
 class ConfirmEmail(APIView):
     """
-    Подтверждение почтового адреса
+    Подтверждение почтового адреса.
+    метод post проверяет наличие почты и токена в запросе, если они совпадают с базой данных - активирует пользователя
     """
 
     def post(self, request, *args, **kwargs):
@@ -71,6 +68,8 @@ class ConfirmEmail(APIView):
 class LoginUser(APIView):
     """
     Аутентификация пользователя
+    метод post проверяет наличие пароля и почты в запросе, если они совпадают с базой данных -
+    авторизует пользователя и возвращает токен
     """
 
     def post(self, request, *args, **kwargs):
@@ -78,12 +77,10 @@ class LoginUser(APIView):
             if request.user.is_authenticated:
                 return Response({'Status': False, 'Errors': 'Пользователь уже аутентифицирован'})
             user = authenticate(request, username=request.data['email'], password=request.data['password'])
-            print(user)
             if user:
                 if user.is_active:
                     token, _ = Token.objects.get_or_create(user=user)
                     login(request, user)
-                    print(token.key)
                     return Response({'Status': True, 'Token': token.key, 'User': user.email})
                 else:
                     return Response({'Status': False, 'Errors': 'Аккаунт не активирован'})
@@ -99,10 +96,12 @@ class LoginUser(APIView):
             return 'False'
 
 
-
 class ModifyUser(APIView):
     """
     Получение и изменение данных пользователя
+    метод post проверяет авторизован ли пользователь, присутствуют ли данные в запросе
+    и обновляет данные пользователя в соответствии с запросом
+    метод get проверяет авторизован ли пользователь и возвращает данные пользователя
     """
 
     authentication_classes = [TokenAuthentication]
@@ -132,6 +131,12 @@ class ModifyUser(APIView):
 class ContactView(APIView):
     """
     Получение, создание и изменение контактов пользователя
+    метод get проверяет авторизован ли пользователь и возвращает контакты пользователя
+    метод post проверяет авторизован ли пользователь, есть ли в запросе данные о контактах пользователя
+    и создает контакт
+    метод put проверяет авторизован ли пользователь, есть ли в запросе данные о контактах пользователя
+    и изменяет данные о контактах пользователя
+    метод delete проверяет авторизован ли пользователь и удаляет выбранный контакт пользователя
     """
 
     authentication_classes = [TokenAuthentication]
@@ -150,7 +155,6 @@ class ContactView(APIView):
                 request.data['user'] = request.user.id
                 serializer = ContactSerializer(data=request.data, context={'request': request})
                 if serializer.is_valid():
-                    print(request.data)
                     serializer.save(user=request.user)
                     return Response({'Status': True, 'Contact': serializer.data})
                 else:
@@ -189,6 +193,7 @@ class ContactView(APIView):
 class ShopView(APIView):
     """
     Получение списка магазинов
+    метод get возвращает список магазинов, импортируя информацию из yaml-файла
     """
 
     serializer_class = ShopSerializer
@@ -204,6 +209,7 @@ class ShopView(APIView):
 class CategoryView(APIView):
     """
     Получение списка категорий
+    метод get возвращает список категорий, импортируя информацию из yaml-файла
     """
 
     serializer_class = CategorySerializer
@@ -217,6 +223,7 @@ class CategoryView(APIView):
 class GoodsView(APIView):
     """
     Получение списка товаров
+    метод get возвращает список товаров, импортируя информацию из yaml-файла
     """
 
     serializer_class = GoodsSerializer
@@ -229,7 +236,8 @@ class GoodsView(APIView):
 
 class ProductInfoView(APIView):
     """
-    Импорт информации о продукте
+    Получение информации о каждом товаре
+    метод get возвращает информацию о каждом товаре, импортируя информацию из yaml-файла
     """
 
     def get(self, request):
@@ -241,32 +249,34 @@ class ProductInfoView(APIView):
 class ProductInfoFiltersView(APIView):
     """
     Получение информации о продукте по фильтрам
+    метод get выводит информацию о товаре, согласно переданным фильтрам по магазину и категории
     """
     def get(self, request, *args, **kwargs):
-
         query = Q(shop__status=True)
         shop_id = request.query_params.get('shop_id')
         category_id = request.query_params.get('category_id')
-
         if shop_id:
             query = query & Q(shop_id=shop_id)
         if category_id:
             query = query & Q(product__category_id=category_id)
-
         queryset = (ProductInfo.objects.filter(query).select_related('shop', 'product__category').
                     prefetch_related('product_parameters__parameter').distinct())
-
         serializer = ProductInfoSerializer(queryset, many=True)
-
         return Response(serializer.data)
 
 
 class BasketView(APIView):
+    """
+    получение корзины пользователя
+    метод get проверяет авторизован ли пользователь и возвращает информацию о корзине
+    метод post проверяет авторизован ли пользователь и добавляет в корзину товары
+    метод put проверяет авторизован ли пользователь и обновляет информацию о корзине
+    метод delete проверяет авторизован ли пользователь и удаляет из корзины все лишние позиции
+    """
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-
         if not request.user.is_authenticated:
             return Response({'Status': False, 'Error': 'User is not authenticated'})
         basket = Order.objects.filter(
@@ -274,14 +284,11 @@ class BasketView(APIView):
             'ordered_items__product_info__product__category',
             'ordered_items__product_info__product_parameters__parameter').select_related('contact').annotate(
             total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
-
         if basket:
             serializer = OrderSerializer(basket, many=True)
             return Response({'Status': True, 'Basket': serializer.data})
 
-
     def post(self, request, *args, **kwargs):
-
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'User is not authenticated'},
                                 status=403)
@@ -337,9 +344,16 @@ class BasketView(APIView):
 
 
 class OrderView(APIView):
+    """
+    получение списка заказов пользователя
+    метод get проверяет авторизован ли пользователь и возвращает список заказов
+    метод post проверяет авторизован ли пользователь и создает новый заказ
+    метод put проверяет авторизован ли пользователь и обновляет статус заказа
+    """
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
+    # получение списка заказов пользователя
     def get(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'User is not authenticated'},
@@ -355,7 +369,7 @@ class OrderView(APIView):
         else:
             return JsonResponse({'Status': False, 'Error': 'Заказов нет'})
 
-
+    # создание нового заказа
     def post(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'User is not authenticated'},
@@ -374,6 +388,7 @@ class OrderView(APIView):
         else:
             return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
+    # изменение статуса заказа
     def put(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'User is not authenticated'},
@@ -393,6 +408,14 @@ class OrderView(APIView):
 
 
 class ShopUpdate(APIView):
+    """
+    обновление информации от магазина
+    метод post проверяет авторизован ли пользователь и обновляет информацию о магазине, категориях и товарахб
+    импортируя ее из файла по ссылке
+    """
+
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
@@ -412,8 +435,6 @@ class ShopUpdate(APIView):
                 stream = get(url).content
                 stream = stream.decode('utf-8')
                 data = load_yaml(stream, Loader=Loader)
-                # print(data[1]['categories'])
-
 
             shop, _ = Shop.objects.get_or_create(name=data[0]['users'][0]['shop']['name'], url=data[0]['users'][0]['shop']['url'], user_id=request.user.id)
             for category in data[1]['categories']:
@@ -423,8 +444,6 @@ class ShopUpdate(APIView):
             ProductInfo.objects.filter(shop_id=shop.id).delete()
             for item in data[2]['goods']:
                 product, _ = Goods.objects.get_or_create(name=item['name'], category_id=item['category'])
-                # print(product.id)
-
                 product_info = ProductInfo.objects.create(product_id=product.id,
                                                           external_id=item['id'],
                                                           model=item['model'],
@@ -435,14 +454,23 @@ class ShopUpdate(APIView):
                 for name, value in item['parameters'].items():
                     parameter, _ = Parameter.objects.get_or_create(name=name)
                     ProductParameter.objects.get_or_create(product_info_id=product_info.id,
-                                                    parameter_id=parameter.id,
-                                                    value=value)
+                                                           parameter_id=parameter.id,
+                                                           value=value)
 
                 return JsonResponse({'Status': True})
         return JsonResponse({'Status': False, 'Errors': 'Пользователь не найден'})
 
 
 class ShopStatus(APIView):
+    """
+    изменение статуса магазина
+    метод post проверяет авторизован ли пользователь и обновляет статус получения заказа
+    метод get проверяет авторизован ли пользователь и возвращает статус получения заказа
+    """
+
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def post(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'User is not authenticated'},
@@ -467,11 +495,18 @@ class ShopStatus(APIView):
             return JsonResponse({'Status': False, 'Error': 'Только для магазинов'},
                                 status=403)
         shop = request.user.shops.first()
-        serializator = ShopSerializer(shop)
-        return Response(serializator.data)
+        serializer = ShopSerializer(shop)
+        return Response(serializer.data)
+
 
 class ListOfOrdersView(APIView):
+    """
+    список заказов
+    метод get проверяет авторизован ли пользователь и возвращает список заказов
+    """
 
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
 

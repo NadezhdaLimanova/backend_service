@@ -11,6 +11,12 @@ new_user_registered = Signal()
 
 new_order = Signal()
 
+"""
+Ниже представлены два сигнала: send_activation_email(при регистрации нового пользователя отправляет письмо 
+для подтверждения почты на email пользователя) и send_new_order_email(при создании нового заказа отправляет письмо
+с информацией о заказе и его статусе)
+"""
+
 
 @receiver(post_save, sender=User)
 def send_activation_email(sender: Type[User], instance: User, created: bool, **kwargs):
